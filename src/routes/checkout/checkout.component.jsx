@@ -1,12 +1,16 @@
-import { useContext } from "react";
+import { CardElement} from "@stripe/react-stripe-js";
+import { useSelector } from "react-redux";
 import CheckOutItem from "../../components/checkout-item/checkout-item.component";
+import PaymentForm from "../../components/payment-form/payment-form.component";
 
-import { CartContext } from "../../contexts/cart.context";
+import { selectCartItems, selectCartTotalPrice } from "../../store/cart/cart.selector";
 import { CheckoutContainer, CheckoutHeader, HeaderBlock, Total } from "./checkout.styles";
 
 
 const Checkout = () => {
-  const { cartItems, totalPrice } = useContext(CartContext);
+  const cartItems = useSelector(selectCartItems);
+  const totalPrice = useSelector(selectCartTotalPrice);
+
   return (
     <CheckoutContainer>
       <CheckoutHeader>
@@ -32,6 +36,7 @@ const Checkout = () => {
       ))}
 
       <Total>Total: ${totalPrice} </Total>
+      <PaymentForm />
     </CheckoutContainer>
   );
 };

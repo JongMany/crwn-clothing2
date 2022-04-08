@@ -8,7 +8,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
 } from "firebase/auth";
 import {
   getFirestore,
@@ -18,8 +18,8 @@ import {
   collection,
   writeBatch,
   query,
-  getDocs
-} from 'firebase/firestore'
+  getDocs,
+} from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -32,34 +32,39 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const firebaseApp = initializeApp(firebaseConfig) 
+const firebaseApp = initializeApp(firebaseConfig);
 
 //GoogleAuthProvider 인스턴스 생성
 const googleProvider = new GoogleAuthProvider();
 //Configuration => GoogleAuthProvider가 작동하는 방식 (Google이 정해놓은 방식 중 하나를 택하는 것임)
 googleProvider.setCustomParameters({
-  prompt: 'select_account'
+  prompt: "select_account",
 });
 
 //auth 인스턴스 생성
 export const auth = getAuth();
-export const signInWithGooglePopup = () => signInWithPopup(auth, googleProvider);
-export const signInWithGoogleRedirect = () => signInWithRedirect(auth, googleProvider);
+export const signInWithGooglePopup = () =>
+  signInWithPopup(auth, googleProvider);
+export const signInWithGoogleRedirect = () =>
+  signInWithRedirect(auth, googleProvider);
 
 //firebase DB 인스턴스 생성
 export const db = getFirestore();
 
 //새로운 user를 Database의 새 document를 생성하여 넣기
-export const createUserDocumentFromAuth = async (userAuth, addtionalInformation = {}) => {
-  if(!userAuth) return; 
-  const userDocRef = doc(db, 'users', userAuth.uid);
+export const createUserDocumentFromAuth = async (
+  userAuth,
+  addtionalInformation = {}
+) => {
+  if (!userAuth) return;
+  const userDocRef = doc(db, "users", userAuth.uid);
   const userSnapshot = await getDoc(userDocRef);
   //user data does not exists
-  if(!userSnapshot.exists()) {
-    const {displayName, email} = userAuth;
+  if (!userSnapshot.exists()) {
+    const { displayName, email } = userAuth;
     const createdAt = new Date();
 
-    try{
+    try {
       await setDoc(userDocRef, {
         displayName,
         email,
@@ -67,39 +72,56 @@ export const createUserDocumentFromAuth = async (userAuth, addtionalInformation 
         ...addtionalInformation,
       });
     } catch (error) {
-      console.log('error creating the user', error.message);
+      console.log("error creating the user", error.message);
     }
   }
 
-  return userDocRef;
-}
-
+  return userSnapshot;
+};
 
 //Email&Password로 가입한 user의 authentication 확보
 export const createAuthUserWithEmailAndPassword = async (email, password) => {
-  if(!email || !password) return;
+  if (!email || !password) return;
 
   return await createUserWithEmailAndPassword(auth, email, password);
-}
+};
 //Email&Password로 가입한 user 로그인
 export const signInAuthUserWithEmailAndPassword = async (email, password) => {
-  if(!email || !password) return;
+  if (!email || !password) return;
 
   return await signInWithEmailAndPassword(auth, email, password);
-}
+};
 
 //로그아웃!
-export const signOutUser = async() => await signOut(auth);
+export const signOutUser = async () => await signOut(auth);
 
 //user(auth)에 대한 정보를 끊임없이 수신하는 함수
-export const onAuthStateChangedListener = (nextCallback) =>  {
-  if(!nextCallback) return; //안전장치
+export const onAuthStateChangedListener = (nextCallback) => {
+  if (!nextCallback) return; //안전장치
   return onAuthStateChanged(auth, nextCallback);
-} 
+};
 
+export const getCurrentUser = () => {
+  return new Promise((resolve, reject) => {
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (userAuth) => {
+        //observer에서 single check로 변환했으므로, check후에 바로 unsubscribe하도록!
+        unsubscribe();
+        resolve(userAuth);
+      },
+      (err) => {
+        reject(err);
+      }
+    );
+  });
+};
 
 //데이터를 firestore에 저장하도록!
-export const addCollectionAndDocuments = async (collectionKey, objectsToAdd) => {
+export const addCollectionAndDocuments = async (
+  collectionKey,
+  objectsToAdd
+) => {
   const collectionRef = collection(db, collectionKey);
   //Get a new write batch
   const batch = writeBatch(db);
@@ -110,22 +132,26 @@ export const addCollectionAndDocuments = async (collectionKey, objectsToAdd) => 
   });
 
   await batch.commit();
-  console.log('done');
-}
+  console.log("done");
+};
 
 //데이터를 firestore(categories collection)에서 가져오도록!
 export const getCategoriesAndDocuments = async () => {
-  const collectionRef = collection(db, 'categories');
+  const collectionRef = collection(db, "categories");
   const q = query(collectionRef);
 
   const querySnapshot = await getDocs(q);
 
-  //snapshot의 데이터 -> 객체로!
+  //categories collection의 데이터를 배열로 반환
+  return querySnapshot.docs.map((docSnapshot) => docSnapshot.data());
+
+  /*   //snapshot의 데이터 -> 객체로!
   const categoryMap = querySnapshot.docs.reduce((acc, docSnapshot, i) => {
     const { title, items } = docSnapshot.data();
     acc[title.toLowerCase()] = items;
     return acc;
-  },{});
+  },{}); 
 
   return categoryMap;
-}
+  */
+};
